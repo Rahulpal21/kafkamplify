@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: kafkamplify
+  kafka:
+    global.embedded.enabled: true
+    listener:
+      ack-mode: batch
+      concurrency: 2
+    consumer:
+      max-poll-records: 800
+
+#spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-servers
+#spring.kafka.embedded.topics=
+#spring.kafka.embedded.partitions=
