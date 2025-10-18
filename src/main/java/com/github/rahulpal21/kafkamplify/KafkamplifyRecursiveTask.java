@@ -1,5 +1,6 @@
 package com.github.rahulpal21.kafkamplify;
 
+import com.github.rahulpal21.kafkamplify.api.KafkamplifyMessageHandler;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 
 import java.util.Queue;
@@ -11,6 +12,7 @@ public class KafkamplifyRecursiveTask<K, V> extends RecursiveTask<String> {
     private final Queue<ConsumerRecord<K, V>> orderQueue;
     private final AtomicBoolean isClosed;
     private final ConsumerRecord<K, V> record;
+    private KafkamplifyMessageHandler<K, V>  handler;
 
     public KafkamplifyRecursiveTask(ConsumerRecord<K, V> record) {
         orderQueue = new SynchronousQueue<>();
@@ -36,7 +38,7 @@ public class KafkamplifyRecursiveTask<K, V> extends RecursiveTask<String> {
     @Override
     protected String compute() {
         //TODO task computation
-        System.out.println(record.value());
+        handler.handleMessage(record);
         /*
         look for any enqueued tasks
          */
