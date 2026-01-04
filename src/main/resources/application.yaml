@@ -9,6 +9,6 @@ spring:
     consumer:
       max-poll-records: 800
 
-#spring.embedded.kafka.brokers.property=spring.kafka.bootstrap-servers
-#spring.kafka.embedded.topics=
-#spring.kafka.embedded.partitions=
+#logging:
+#  level:
+#    root: DEBUG

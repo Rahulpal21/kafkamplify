@@ -27,29 +27,32 @@ class KafkamplifyApplicationTests {
 
     @Autowired
     private EmbeddedKafkaBroker kafkaBroker;
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     @BeforeEach
     public void setup() {
         Map<String, Object> producerProps = KafkaTestUtils.producerProps(kafkaBroker);
         producerProps.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         producerProps.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        kafkaTemplate = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(producerProps));
 
-        // Create Kafka template
-        KafkaTemplate<String, String> kafkaTemplate = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(producerProps));
-        RandomGenerator randomGenerator = new Random();
-        System.out.println("*****************   PRELOADING  **********************");
-        long before = System.currentTimeMillis();
-        for (int i = 0; i < 100000000; i++) {
-            kafkaTemplate.send("test-topic", String.valueOf(i), String.valueOf(randomGenerator.nextLong()));
-        }
-        System.out.println(System.currentTimeMillis()-before);
-        System.out.println("*****************   FINISHED PRELOADING  **********************");
-
+//        System.out.println(System.currentTimeMillis()-before);
+//        System.out.println("*****************   FINISHED PRELOADING  **********************");
     }
 
     @Test
     void contextLoads() throws InterruptedException {
-        Thread.currentThread().sleep(Integer.MAX_VALUE);
+        // Create Kafka template
+
+        RandomGenerator randomGenerator = new Random();
+//        System.out.println("*****************   PRELOADING  **********************");
+//        long before = System.currentTimeMillis();
+//        for (int i = 0; i < 100000000; i++) {
+        int i = 0;
+        while (true) {
+            kafkaTemplate.send("test-topic", String.valueOf(i++), String.valueOf(randomGenerator.nextLong()));
+        }
+//        Thread.currentThread().sleep(Integer.MAX_VALUE);
     }
 
     @AfterAll

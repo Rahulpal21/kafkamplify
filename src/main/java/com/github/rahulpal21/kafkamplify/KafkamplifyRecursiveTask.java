@@ -39,22 +39,26 @@ public class KafkamplifyRecursiveTask<K, V> extends RecursiveTask<String> {
     protected String compute() {
         //TODO task computation
         handler.handleMessage(record);
-        /*
-        look for any enqueued tasks
-         */
+        //look for any enqueued tasks
         KafkamplifyRecursiveTask recursiveTask = null;
+
+        do {
+            ConsumerRecord<K, V> polled = null;
+            synchronized (orderQueue){
+                polled = orderQueue.poll();
+            }
+            handler.handleMessage(polled);
+        }while(checkQueue());
+
+    }
+
+    private boolean checkQueue() {
         synchronized (orderQueue) {
-            ConsumerRecord<K, V> polled = orderQueue.poll();
-            if (polled != null) {
-                recursiveTask = new KafkamplifyRecursiveTask(polled, orderQueue, isClosed);
-                recursiveTask.fork();
-            }else{
+            boolean hasMore = orderQueue.peek() != null;
+            if(!hasMore){
                 isClosed.set(true);
             }
+            return hasMore;
         }
-        if(recursiveTask != null){
-            recursiveTask.join();
-        }
-        return "";
     }
 }

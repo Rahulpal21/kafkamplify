@@ -5,6 +5,7 @@ import io.opentelemetry.api.metrics.LongCounter;
 import io.opentelemetry.api.metrics.LongHistogram;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -18,14 +19,20 @@ import java.util.concurrent.ForkJoinTask;
 @Slf4j
 @Service
 public class KafkaConsumer {
-    private ForkJoinPool pool = new ForkJoinPool(20, new KafkamplifyThreadFactory(), (t, e) -> {
+    private ForkJoinPool pool = new ForkJoinPool(20, ForkJoinPool.defaultForkJoinWorkerThreadFactory, (t, e) -> {
         System.out.println(t.toString() + e.getMessage());
     }, true);
 
     private Map<String, KafkamplifyRecursiveTask<String, String>> taskContainer = new ConcurrentHashMap<>();
     private KafkamplifyKeyExtractor keyExtractor;
-    private final LongCounter batchCount = GlobalOpenTelemetry.get().meterBuilder("").build().counterBuilder("batchCount").build();
-    private final LongHistogram batchLatency = GlobalOpenTelemetry.get().meterBuilder("").build().histogramBuilder("batchCount").ofLongs().build();
+    private final LongCounter batchCount;
+    private final LongHistogram batchLatency;
+
+    @Autowired
+    public KafkaConsumer() {
+        batchCount = GlobalOpenTelemetry.getMeterProvider().meterBuilder("batch").build().counterBuilder("count").build();
+        batchLatency = GlobalOpenTelemetry.getMeterProvider().meterBuilder("batch").build().histogramBuilder("latency").ofLongs().build();
+    }
 
     @KafkaListener(id = "defaultlistener",
             topics = {"test-topic"}, batch = "true")
@@ -42,13 +49,15 @@ public class KafkaConsumer {
         log.trace("******************** ALL SUBMITTED ******************");
         tasks.forEach(stringForkJoinTask -> {
             stringForkJoinTask.join();
-            batchLatency.record(System.nanoTime()-before);
+            batchLatency.record(System.nanoTime() - before);
         });
         log.trace("******************* ALL PROCESSED **********************");
     }
 
     private ForkJoinTask<String> submitTask(ConsumerRecord<String, String> record) {
-        String key = keyExtractor.extractKey(record);
+
+        String key = keyExtractor != null ? keyExtractor.extractKey(record) : record.key();
+
         KafkamplifyRecursiveTask<String, String> task1 = taskContainer.get(key);
         if (task1 == null) {
             task1 = new KafkamplifyRecursiveTask<>(record);
@@ -65,4 +74,5 @@ public class KafkaConsumer {
             }
         }
     }
+
 }
