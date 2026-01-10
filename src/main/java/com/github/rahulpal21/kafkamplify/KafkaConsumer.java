@@ -5,6 +5,7 @@ import io.opentelemetry.api.metrics.LongCounter;
 import io.opentelemetry.api.metrics.LongHistogram;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
@@ -23,8 +24,10 @@ public class KafkaConsumer {
 
     @Autowired
     private ExecutorService threadPoolExecutor;
-    private Map<String, KafkamplifyTask<String, String>> taskContainer = new ConcurrentHashMap<>();
-    private KafkamplifyKeyExtractor keyExtractor;
+    @Autowired
+    private ObjectProvider<KafkamplifyTask<String, String>> taskProvider;
+    private final Map<String, KafkamplifyTask<String, String>> taskContainer = new ConcurrentHashMap<>();
+    private KafkamplifyKeyExtractor<String, String> keyExtractor;
     private final LongCounter batchCount = GlobalOpenTelemetry.get().meterBuilder("").build().counterBuilder("batchCount").build();
     private final LongHistogram batchLatency = GlobalOpenTelemetry.get().meterBuilder("").build().histogramBuilder("batchCount").ofLongs().build();
 
@@ -35,7 +38,7 @@ public class KafkaConsumer {
 
         batchCount.add(records.size());
 
-        List<KafkamplifyTask> tasks = new ArrayList<>();
+        List<KafkamplifyTask<String, String>> tasks = new ArrayList<>();
         records.forEach(record -> {
             tasks.add(submitTask(record));
         });
@@ -54,10 +57,10 @@ public class KafkaConsumer {
         log.trace("******************* ALL PROCESSED **********************");
     }
 
-    private KafkamplifyTask submitTask(ConsumerRecord<String, String> record) {
+    private KafkamplifyTask<String, String> submitTask(ConsumerRecord<String, String> record) {
         String key = keyExtractor != null ? keyExtractor.extractKey(record) : UUID.randomUUID().toString();
 
-        KafkamplifyTask task = taskContainer.get(key);
+        KafkamplifyTask<String, String> task = taskContainer.get(key);
 
         if (task == null) {
             return initializeAndSubmit(record, key);
@@ -71,8 +74,8 @@ public class KafkaConsumer {
         }
     }
 
-    private KafkamplifyTask initializeAndSubmit(ConsumerRecord<String, String> record, String key) {
-        KafkamplifyTask task = new KafkamplifyTask(record);
+    private KafkamplifyTask<String, String> initializeAndSubmit(ConsumerRecord<String, String> record, String key) {
+        KafkamplifyTask<String, String> task = taskProvider.getObject(record);
         taskContainer.put(key, task);
         task.setTaskFuture(threadPoolExecutor.submit(task));
         return task;

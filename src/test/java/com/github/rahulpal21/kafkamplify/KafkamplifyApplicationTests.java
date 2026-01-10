@@ -41,6 +41,11 @@ class KafkamplifyApplicationTests {
         long before = System.currentTimeMillis();
         for (int i = 0; i < 100000000; i++) {
             kafkaTemplate.send("test-topic", String.valueOf(i), String.valueOf(randomGenerator.nextLong()));
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
         System.out.println(System.currentTimeMillis()-before);
         System.out.println("*****************   FINISHED PRELOADING  **********************");
